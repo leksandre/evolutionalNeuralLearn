@@ -1,15 +1,47 @@
+// for qt
 //#include <QCoreApplication>
 //#include <QDebug>
 //#include <QTime>
 
-
-//for linux
-#include "myNeuro.cpp"
 //#include <sys/time.h>
-
-//for win!!
-//#include "myNeuro.h"
 #include <time.h>
+
+
+
+#ifndef __APPLE__
+    //for win!!
+    #include "myNeuro.h"
+
+    //for openGL visulaise
+    #include <Windows.h>
+    #include <GL\glew.h>
+    #include <GL\glut.h>
+    //do not uncomment #define FREEGLUT_STATIC
+    //do not uncomment #define _LIB
+    //do not uncomment #define FREEGLUT_LIB_PRAGMAS 0
+    #include <GL\freeglut.h>
+    #include <iostream>
+    //do not uncomment #include <windows.h>
+    //do not uncomment #include <gl\gl.h>
+
+    //start openGL visualise
+    #include <stdio.h>
+    #include <math.h>
+    #include <stdlib.h>
+    #include <conio.h>
+    //#include "iostream"
+    #include <time.h>
+    //using namespace std;
+
+    bool flag_visualisation = true;
+    GLfloat xRotated, yRotated, zRotated;
+#else
+    //for linux
+    #include "myNeuro.cpp"
+#endif
+
+
+
 
 
 
@@ -19,6 +51,13 @@ ofstream report;
 
 
 
+myNeuro* bb;
+
+double zIncrement = 0.4;
+float dead_transparency_line = 0.08;
+float live_transparency_line = 0.15;
+
+float pointOfCentre = 0.5;
 
 const int epochs = 512;
 const double learning_rate = 1e-3;
@@ -260,232 +299,556 @@ void write_matrix(string file_name) {
 
 
 
-int getVersion() {
-    if (__cplusplus == 202101L) std::cout << "C++23";
-    else if (__cplusplus == 202002L) std::cout << "C++20";
-    else if (__cplusplus == 201703L) std::cout << "C++17";
-    else if (__cplusplus == 201402L) std::cout << "C++14";
-    else if (__cplusplus == 201103L) std::cout << "C++11";
-    else if (__cplusplus == 199711L) std::cout << "C++98";
-    else std::cout << "pre-standard C++." << __cplusplus;
-    std::cout << "\n";
+
+
+
+
+
+
+
+
+
+
+
+#ifndef __APPLE__
+
+
+
+
+
+
+//void drawLayer(double z, int pointsInCount, Point * points, bool drawGraph = false, int pointsOutCount=0, Point * pointsPrev = {})
+void drawLayer(double z, int iList)
+{
+    Point * points = bb->list[iList].getInPoints();
+    int pointsInCount = bb->list[iList].getInCount();
+    Point* pointsPrev = bb->list[iList].getOutPoints();
+    int pointsOutCount = bb->list[iList].getOutCount();
+    float ** weights = bb->list[iList].getMatrix();
+
+    double x;
+    double y;
+    int i = 0;
+    for(int i=0;i<=(pointsInCount-1);i++){
+
+        //std::cout << "drawGraph" << fixed << drawGraph << endl;;;
+        //std::cout << "z" << fixed << z << endl;;;
+        //std::cout << "i" << fixed << i << endl;;;
+
+
+        //std::cout << "points[i]" << std::to_string(point) << endl;;;
+        //std::cout << "points[i]" << fixed << std::to_string(point) << endl;;;
+        // 
+        //std::cout << "points[i].x" << fixed << points[i].x << endl;;;
+        //std::cout << "points[i].y" << fixed << points[i].y << endl;;;
+        
+        x = points[i].x;
+        y = points[i].y;
+        
+        
+        glPointSize(3.0);
+        glColor4f(1.0, 1.0, 1.0, 0.95);
+
+        glBegin(GL_POINTS);
+        glVertex3f(x, y, z);
+        glEnd();
+
+        //if((pointsInCount < 100 )|| (rand() % 20 == 9) ){//идем на координаты точек на выходе предидущего слоя
+        float colorLine = dead_transparency_line;
+        if ((rand() % 100 != 9)) {
+            colorLine = live_transparency_line;
+            //continue;
+        }
+
+        if(1){
+            double zP = z+zIncrement;
+            for(int j=0;j<=(pointsOutCount-1);j++) {
+                float w = weights[i][j];
+
+                double xP = pointsPrev[j].x;
+                double yP = pointsPrev[j].y;
+                glPointSize(3.0);
+                glColor4f(1.0, 1.0, 1.0, 0.95);
+
+                glBegin(GL_POINTS);
+                glVertex3f(xP, yP, zP);
+                glEnd();
+
+                glLineWidth(w);
+
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, colorLine);
+                glVertex3f(x, y, z);
+                glVertex3f(xP, yP, zP);
+                glEnd();
+            }
+        }
+    
+    }
+
 }
 
 
 
-int main(int argc, char *argv[])
+
+void displaynetwork_v2(void)
+{
+    glMatrixMode(GL_MODELVIEW);
+    // clear the drawing buffer.
+    glClear(GL_COLOR_BUFFER_BIT);
+    // clear the identity matrix.
+    glLoadIdentity();
+    // traslate the draw by z = -4.0
+    // Note this when you decrease z like -8.0 the drawing will looks far , or smaller.
+    glTranslatef(-1.0, -0.75, -3.5); // -1.6 for scaling of 2.3
+    // Red color used to draw.
+    glColor3f(0.8, 0.2, 0.1);
+    glRotatef(yRotated, 1.0, 1.0, 1.0);
+    glScalef(1.0, 1.0, 1.0);
+
+    float dead_transparency_line = 0.08;
+    float live_transparency_line = 0.15;
+
+
+
+
+    double z = 0.0;
+
+    //    drawLayer(z, pointsInCount, pointsW);
+    //drawLayer(z, 0);
+
+    //std::cout << "\n z = " << z;;
+    //std::cout << "\n bb->nlCount = "<< (bb->nlCount);;
+
+    for(int i=0;i<=((bb->nlCount)-1);i++)
+    {
+
+        //std::cout << "\n i = " << i;;
+
+        
+
+        //std::cout << "\n z+inc = " << z;;
+        //std::cout << "\n pointsW.size() = " << sizeof(pointsW);;
+        //std::cout << "\n pointsOutCount = " << pointsOutCount;;
+
+        //        drawLayer(z, pointsInCount, pointsW, true, pointsOutCount, pointsPrev);
+        drawLayer(z, i);
+        z += zIncrement;
+    }
+
+
+//
+//    if (flag_visualisation == true)
+//    {
+//        //Inut image '1'
+//        glPointSize(15.0);
+//        glBegin(GL_POINTS);
+//        glColor4f(0.0, 0.0, 1.0, 1.0);
+//        glVertex3f(0.3, 0.2, 0.0);
+//        glVertex3f(0.3, 0.3, 0.0);
+//        glVertex3f(0.3, 0.4, 0.0);
+//        glVertex3f(0.3, 0.5, 0.0);
+//        glVertex3f(0.3, 0.6, 0.0);
+//        glVertex3f(0.4, 0.5, 0.0);
+//        glVertex3f(0.2, 0.2, 0.0);
+//        glVertex3f(0.3, 0.2, 0.0);
+//        glVertex3f(0.4, 0.2, 0.0);
+//        glEnd();
+//
+//        //Highlighting the active neurons
+//        highlight_lines(0.3, 0.2, 0.0, live_transparency_line);
+//        highlight_lines(0.3, 0.3, 0.0, live_transparency_line);
+//        highlight_lines(0.3, 0.4, 0.0, live_transparency_line);
+//        highlight_lines(0.3, 0.5, 0.0, live_transparency_line);
+//        highlight_lines(0.3, 0.6, 0.0, live_transparency_line);
+//        highlight_lines(0.4, 0.5, 0.0, live_transparency_line);
+//        highlight_lines(0.2, 0.2, 0.0, live_transparency_line);
+//        highlight_lines(0.3, 0.2, 0.0, live_transparency_line);
+//        highlight_lines(0.4, 0.2, 0.0, live_transparency_line);
+//    }
+
+
+    //Flushing the whole output
+    glFlush();
+    // sawp buffers called because we are using double buffering
+    glutSwapBuffers();
+}
+
+
+
+
+void changeViewPort(int w, int h)
+{
+    glViewport(0, 0, w, h);
+}
+
+
+void check(int value)
+{
+    if (flag_visualisation == true)
+    {
+        flag_visualisation = false;
+    }
+    else if (flag_visualisation == false)
+    {
+        flag_visualisation = true;
+    }
+    //cout << "allow_truncate_for_example: " << allow_truncate_for_example << "\n";
+    int inS = 1; // get layer where 128 heurons
+    if (allow_truncate_for_example) {
+        if(bb->list[inS].getInCount()>2)
+        if (rand() % 3 == 2) {
+            int inp = (rand() % (bb->list[inS].getInCount()));
+            cout << "truncate: " << inp << "\n";
+            bb->list[inS-1].truncMatrixOut(inp);
+            bb->list[inS].truncMatrixIn(inp);
+
+        }
+    }
+
+
+    //
+    glutPostRedisplay();
+    glutTimerFunc(100, check, 0);
+
+
+}
+
+
+void highlight_lines(float x, float y, float z, float live_transparency_line)
+{
+    return;
+    float a, b, c;
+    for (a = 0; a <= 1; a = a + 0.1)
+    {
+        for (b = 0; b <= 1; b = b + 0.1)
+        {
+            for (c = 0; c <= 1; c = c + 0.1)
+            {
+                //First Hidden Layer Plane 1 
+                glPointSize(12.0);
+                glBegin(GL_POINTS);
+                glColor4f(1.0, 1.0, 1.0, 0.95);
+                glVertex3f(0.1 + b, 0.1 + c, 0.4);
+                //glVertex3f(0.1 + b, 0.1 + c, 0.4);
+                glEnd();
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, live_transparency_line);
+                glVertex3f(x, y, z);
+                glVertex3f(0.1 + b, 0.1 + c, 0.4);
+                //glVertex3f(0.1 + b, 0.1 + c, 0.4);
+                glEnd();
+
+                //First Hidden Layer Plane 4
+                if (c < 0.44)
+                {
+                    glPointSize(12.0);
+                    glBegin(GL_POINTS);
+                    glVertex3f(x, y, z);
+                    //glVertex3f(0.17 + b, 0.16 + c, 0.44);
+                    //glVertex3f(0.17 + b, 0.16 + c, 0.44);
+                    glEnd();
+                    glBegin(GL_LINE_LOOP);
+                    glColor4f(1.0, 1.0, 1.0, live_transparency_line);
+                    glVertex3f(x, y, z);
+                    //glVertex3f(0.17 + b, 0.16 + c, 0.44);
+                    //glVertex3f(0.17 + b, 0.16 + c, 0.44);
+                    glEnd();
+                }
+
+                //Second Hidden Layer Plane 1 
+                glPointSize(12.0);
+                glBegin(GL_POINTS);
+                glColor4f(1.0, 1.0, 1.0, 0.95);
+                glVertex3f(0.1 + b, 0.1 + c, 0.8);
+                //glVertex3f(0.1 + b, 0.1 + c, 0.8);
+                glEnd();
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, live_transparency_line);
+                glVertex3f(0.1 + b, 0.1 + a, 0.4);
+                glVertex3f(0.1 + b, 0.1 + c, 0.8);
+                //glVertex3f(0.1 + b, 0.1 + c, 0.8);
+                glEnd();
+
+                //output layer 
+                glPointSize(20.0);
+                glBegin(GL_POINTS);
+                glColor4f(0.0, 0.0, 1.0, 1.0);
+                glVertex3f(0.2, pointOfCentre, 1.2);
+                glEnd();
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, live_transparency_line);
+                glVertex3f(0.1 + b, 0.1 + a, 0.8);
+                glVertex3f(0.2, pointOfCentre, 1.2);
+                //glVertex3f(0.2, pointOfCentre, 1.2);
+                glEnd();
+
+            }
+        }
+    }
+}
+void displaynetwork(void)
+{
+    glMatrixMode(GL_MODELVIEW);
+    // clear the drawing buffer.
+    glClear(GL_COLOR_BUFFER_BIT);
+    // clear the identity matrix.
+    glLoadIdentity();
+    // traslate the draw by z = -4.0
+    // Note this when you decrease z like -8.0 the drawing will looks far , or smaller.
+    glTranslatef(-1.0, -0.75, -3.5); // -1.6 for scaling of 2.3
+    // Red color used to draw.
+    glColor3f(0.8, 0.2, 0.1);
+    glRotatef(yRotated, 1.0, 1.0, 1.0);
+    glScalef(1.0, 1.0, 1.0);
+
+
+    float a, b, c;
+    //int l1, l2, l3, l4;
+    //int m1, m2, m3, m4;
+    //m1 = 28 * 28;
+    //m2 = 28 * 10;
+    //m3 = 128;
+    //m4 = 10;
+    for (a = 0; a <= 1; a = a + 0.1)
+    {
+        for (b = 0; b <= 1; b = b + 0.1)
+        {
+            for (c = 0; c <= 1; c = c + 0.1)
+            {
+                //Input Layer 
+                glPointSize(15.0);
+                glBegin(GL_POINTS);
+                glColor4f(1.0, 1.0, 1.0, 0.95);
+                glVertex3f(0.1 + b, 0.1 + a, 0.0);
+                glEnd();
+
+                //First Hidden Layer Plane 1 
+                glPointSize(12.0);
+                glBegin(GL_POINTS);
+                glColor4f(0.0, 1.0, 0.0, 0.95);
+                glVertex3f(0.1 + b, 0.1 + c, 0.4);
+                glEnd();
+
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, dead_transparency_line);
+                glVertex3f(0.1 + b, 0.1 + a, 0.0);
+                glVertex3f(0.1 + b, 0.1 + c, 0.4);
+                glEnd();
+
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, dead_transparency_line);
+                glVertex3f(0.1 + a, 0.1 + c, 0.0);
+                glVertex3f(0.1 + b, 0.1 + c, 0.4);
+                glEnd();
+
+                //First Hidden Layer Plane 2
+                if (c < 0.47)
+                {
+                    glPointSize(12.0);
+                    glBegin(GL_POINTS);
+                    glVertex3f(0.1 + b, 0.1 + a, 0.0);
+                    //glVertex3f(0.13 + b, 0.13 + c, 0.42);
+                    glEnd();
+                    glBegin(GL_LINE_LOOP);
+                    glColor4f(1.0, 1.0, 1.0, dead_transparency_line);
+                    glVertex3f(0.1 + b, 0.1 + a, 0.0);
+                    //glVertex3f(0.13 + b, 0.13 + c, 0.42);
+                    //glVertex3f(0.13 + b, 0.13 + c, 0.42);
+                    glEnd();
+                }
+
+                //First Hidden Layer Plane 3
+                glPointSize(12.0);
+                glBegin(GL_POINTS);
+                glVertex3f(0.1 + b, 0.1 + a, 0.0);
+                //glVertex3f(0.07 + b, 0.07 + c, 0.42);
+                //glVertex3f(0.07 + b, 0.07 + c, 0.42);
+                glEnd();
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, dead_transparency_line);
+                glVertex3f(0.1 + b, 0.1 + a, 0.0);
+                //glVertex3f(0.07 + b, 0.07 + c, 0.42);
+                //glVertex3f(0.07 + b, 0.07 + c, 0.42);
+                glEnd();
+
+                //First Hidden Layer Plane 4
+                if (c < 0.44)
+                {
+                    glPointSize(12.0);
+                    glBegin(GL_POINTS);
+                    glVertex3f(0.1 + b, 0.1 + a, 0.0);
+                    //glVertex3f(0.17 + b, 0.16 + c, 0.44);
+                    //glVertex3f(0.17 + b, 0.16 + c, 0.44);
+                    glEnd();
+                    glBegin(GL_LINE_LOOP);
+                    glColor4f(1.0, 1.0, 1.0, dead_transparency_line);
+                    glVertex3f(0.1 + b, 0.1 + a, 0.0);
+                    //glVertex3f(0.17 + b, 0.16 + c, 0.44);
+                    //glVertex3f(0.17 + b, 0.16 + c, 0.44);
+                    glEnd();
+                }
+
+                //Second Hidden Layer Plane 1 
+                glPointSize(12.0);
+                glBegin(GL_POINTS);
+                glColor4f(0.0, 0.0, 1.0, 0.95);
+                glVertex3f(0.1 + b, 0.1 + c, 0.8);
+                //glVertex3f(0.1 + b, 0.1 + c, 0.8);
+                glEnd();
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, dead_transparency_line);
+                glVertex3f(0.1 + b, 0.1 + a, 0.4);
+                glVertex3f(0.1 + b, 0.1 + c, 0.8);
+                glEnd();
+
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, dead_transparency_line);
+                glVertex3f(0.1 + b, 0.1 + c, 0.8);
+                glVertex3f(0.1 + a, 0.1 + c, 0.4);
+                glEnd();
+
+                //Second Hidden Layer Plane 2
+                if (c < 0.47)
+                {
+                    glPointSize(12.0);
+                    glBegin(GL_POINTS);
+                    //glVertex3f(0.1 + b, 0.1 + a, 0.42);
+                    //glVertex3f(0.13 + b, 0.13 + c, 0.82);
+                    //glVertex3f(0.13 + b, 0.13 + c, 0.82);
+                    glEnd();
+                    glBegin(GL_LINE_LOOP);
+                    glColor4f(1.0, 1.0, 1.0, dead_transparency_line);
+                    glVertex3f(0.1 + b, 0.1 + a, 0.0);
+                    //glVertex3f(0.13 + b, 0.13 + c, 0.82);
+                    //glVertex3f(0.13 + b, 0.13 + c, 0.82);
+                    glEnd();
+                }
+
+                //Output Layer
+                glPointSize(12.0);
+                glBegin(GL_POINTS);
+                glColor4f(1.0, 0.0, 0.0, 0.95);
+                glVertex3f(0.1 + b, pointOfCentre, 1.2);
+                //glVertex3f(0.1 + b, pointOfCentre, 1.2);
+                glEnd();
+                glBegin(GL_LINE_LOOP);
+                glColor4f(1.0, 1.0, 1.0, dead_transparency_line);
+                glVertex3f(0.1 + b, 0.1 + c, 0.8);
+                glVertex3f(0.1 + a, pointOfCentre, 1.2);
+                //glVertex3f(0.1 + a, pointOfCentre, 1.2);
+                glEnd();
+            }
+        }
+    }
+
+    if (flag_visualisation == true)
+    {
+        //Inut image '1'
+        glPointSize(15.0);
+        glBegin(GL_POINTS);
+        glColor4f(0.0, 0.0, 1.0, 1.0);
+        glVertex3f(0.3, 0.2, 0.0);
+        glVertex3f(0.3, 0.3, 0.0);
+        glVertex3f(0.3, 0.4, 0.0);
+        glVertex3f(0.3, 0.5, 0.0);
+        glVertex3f(0.3, 0.6, 0.0);
+        glVertex3f(0.4, 0.5, 0.0);
+        glVertex3f(0.2, 0.2, 0.0);
+        glVertex3f(0.3, 0.2, 0.0);
+        glVertex3f(0.4, 0.2, 0.0);
+        glEnd();
+
+        //Highlighting the active neurons 
+        highlight_lines(0.3, 0.2, 0.0, live_transparency_line);
+        highlight_lines(0.3, 0.3, 0.0, live_transparency_line);
+        highlight_lines(0.3, 0.4, 0.0, live_transparency_line);
+        highlight_lines(0.3, 0.5, 0.0, live_transparency_line);
+        highlight_lines(0.3, 0.6, 0.0, live_transparency_line);
+        highlight_lines(0.4, 0.5, 0.0, live_transparency_line);
+        highlight_lines(0.2, 0.2, 0.0, live_transparency_line);
+        highlight_lines(0.3, 0.2, 0.0, live_transparency_line);
+        highlight_lines(0.4, 0.2, 0.0, live_transparency_line);
+    }
+    //Flushing the whole output
+    glFlush();
+    // sawp buffers called because we are using double buffering 
+    glutSwapBuffers();
+}
+void reshapenetwork(int x, int y)
+{
+    if (y == 0 || x == 0) return;  //Nothing is visible then, so return
+    //Set a new projection matrix
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    //Angle of view:40 degrees
+    gluPerspective(40.0, (GLdouble)x / (GLdouble)y, 0.5, 20.0);
+    glViewport(0, 0, x, y);  //Use the whole window for rendering
+}
+void idlenetwork(void)
+{
+    yRotated += 0.05;
+    displaynetwork_v2();
+}
+void render()
+{
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glutSwapBuffers();
+}
+
+#endif
+
+
+void visualise()
 {
 
-    getVersion();
-
-    //QCoreApplication a(argc, argv);
-//   std::cout<<"\n_________________________________ start main 0\n";;;
-    time_t start, end;
-    double time_taken;
-    time(&start);
-
-
-    myNeuro* bb = new myNeuro();
-    iCycleTotal = 0;
-//    start_varian1 = false;
-    bool start_varian1 = false;
-
-
-    if (start_varian1) {
-
-
-
-
-
-
-        //    return 0;
-        //myNeuro bb;
-             //----------------------------------INPUTS----GENERATOR-------------
-        //   std::cout<<"\n_________________________________ start main\n";;;
-                //qsrand((QTime::currentTime().second()));
-        float* abc = new float[n1];
-        for (int i = 0; i < n1; i++)
-        {
-            abc[i] = (rand() % 98) * 0.01 + 0.01;
-        }
-
-        float* cba = new float[n1];
-        for (int i = 0; i < n1; i++)
-        {
-            cba[i] = (rand() % 98) * 0.01 + 0.01;
-        }
-
-        //---------------------------------TARGETS----GENERATOR-------------
-        std::cout << "\n________________TARGETS----GENERATOR_________________\n";;
-        float* tar1 = new float[10];
-        tar1[0] = 0.01;
-        tar1[1] = 0.99;
-        tar1[2] = 0;
-        tar1[3] = 0;
-        tar1[4] = 0;
-        tar1[5] = 0;
-        tar1[6] = 0;
-        tar1[7] = 0;
-        tar1[8] = 0;
-        tar1[9] = 0;
-
-        float* tar2 = new float[10];
-        tar2[0] = 0.99;
-        tar2[1] = 0.01;
-        tar1[2] = 0;
-        tar1[3] = 0;
-        tar1[4] = 0;
-        tar1[5] = 0;
-        tar1[6] = 0;
-        tar1[7] = 0;
-        tar1[8] = 0;
-        tar1[9] = 0;
-
-        std::cout << "\n________________target1_________________\n";;
-        for (int out = 0; out < 10; out++) {
-            std::cout << "outputNeuron " + std::to_string(out) + ":";
-            std::cout << std::to_string(tar1[out]) + "\n";
-        }
-        std::cout << "\n________________target2_________________\n";;
-        for (int out = 0; out < 10; out++) {
-            std::cout << "outputNeuron " + std::to_string(out) + ":";
-            std::cout << std::to_string(tar2[out]) + "\n";
-        }
-
-        //--------------------------------NN---------WORKING---------------
-
-        std::cout << "\n___________________calculate_without_train_____________\n";;
-        bb->query(abc);
-        bb->query(cba);
-
-        std::cout << "\n________________start_train_________________\n";;
-        iCycle = 0;
-        int nTrainingSimple = 100000;
-
-
-
-
-//        float * e1;
-//        for(int i=(bb->nlCount-2);i>=0;i--)
-//            errTmp[i] = e1;
-
-        while (iCycle < nTrainingSimple and !is_optimizedM)
-        //train until specified accuracy level
-        {
-            if(!is_optimizedM) iCycleTotal++;
-
-            float ** errors1 = bb->train(abc, tar1,allow_optimisation_transform);
-
-//            if(iCycle==0)
-//            for(int i=(bb->nlCount-2);i>=0;i--)
-//                errTmp[i] = bb->list[i].getErrors();
-
-//            for(int i=(bb->nlCount-2);i>=0;i--)
-//                errTmp[i] = bb->sumFloatMD(errTmp[i],bb->list[i].getErrors(),bb->list[i].getOutCount());
-
-
-            float ** errors2 = bb->train(cba, tar2,allow_optimisation_transform);
-
-//            for(int i=(bb->nlCount-2);i>=0;i--)
-//                errTmp[i] = bb->sumFloatMD(errTmp[i],bb->list[i].getErrors(),bb->list[i].getOutCount());
-
-
-//            for(int i=(bb->nlCount-2);i>=0;i--)
-//                errTmp[i] = bb->list[i].getErrors();
-
-
-//            for(int i=(bb->nlCount-2);i>=0;i--)
-//                errTmp[i] = bb->sumFloatMD(errTmp[i],bb->list[i].getErrors(),bb->list[i].getOutCount());
-
-            iCycle++;
-
-//            if(iCycle>1000)
-            if (allow_optimisation_transform){
-                for(int i=(bb->nlCount-2);i>=0;i--)
-                    bb->optimize_layer(i);
-            }
-
-
-            if(is_optimizedM)
-            {
-                cout<<endl<<"_______________show_errors_______________\n"<<endl;
-//                for(int i=(bb->nlCount-1);i>=0;i--) //skip "out" layer (nlCount-1) we could not modified it (a am too stupid for that)
-                for(int i=(bb->nlCount-2);i>=0;i--)
-                {
-
-                    cout<<" layer :"+std::to_string(i)+" ";
-                    bb->printArray(bb->list[i].getErrors(),i, bb->list[i].getOutCount());
-                    std::cout<<"\n";
-
-                    cout<<" errTmp:"+std::to_string(i)+" ";
-                    bb->printArray(bb->list[i].errTmp,i, bb->list[i].getOutCount());
-                    std::cout<<"\n";
-//  just trash
-//                    bb->printArray(errors1[i],0,300);
-//                    bb->printArray(errors2[i],0,300);
-//                    for(int j=0;j<241;j++)
-//                    {
-//                        cout<<"\t"<<i<<":"<<j<<"\t"<<errors1[i][j];
-//                        if(errors1[i][j]!=0)maxN=j;
-//                    }
-//                    std::cout << "\nmaxN="<<maxN;
-//                    cout<<endl<<"\n______________________________\n"<<endl;
-
-
-                }
-            }
-
-
-
-        }
-
-
-        std::cout << "\n________________end_train_________________\n";;
-        std::cout << "\n___________________calculate_RESULT_____________\n";;
-        bb->query(abc);
-        std::cout << "______\n";;
-        bb->query(cba);
-
-
-        std::cout << "\n_______________THE____END_______________\n";;
-        //std::cout<<"\n_______________THE____END_______________\n";;
-
-         //return a.exec();
-
-
-
-    std::cout<<"\n______________________________\n";
-    std::cout<<"iCycle:"<<iCycle<<endl;
-    std::cout<<"iCycleTotal:"<<iCycleTotal<<endl;
-
-    time(&end);
-    // Calculating total time taken by the program.
-
-    time_taken = double(end - start);
-    std::cout << "Time taken by program is : " << time_taken << "";
-    std::cout << " sec " << "\n";
-
-
-    if (allow_optimisation_transform) {
-        bb->write_matrix_var1(model_fn_opt);
-    } else {
-        bb->write_matrix_var1(model_fn);
-    }
-
-
-    return 0;
-
-    }
-
-
-
-
-
-
-
-
-
-
+#ifndef __APPLE__
+   
+        //for openGl visulaise
+        //
+
+        //Initialize GLUT
+     
+        //double buffering used to avoid flickering problem in animation
+        glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+
+        // window size
+        glutInitWindowSize(1350, 950);
+        glutInitWindowPosition(0, 0);
+
+        // create the window 
+        glutCreateWindow("network Rotating Animation");
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        yRotated = 40;
+        glClearColor(0.0, 0.0, 0.0, 0.0);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        //Assign  the function used in events
+        glutDisplayFunc(displaynetwork_v2);
+        glutReshapeFunc(reshapenetwork);
+        glutIdleFunc(idlenetwork);
+
+        //Let start glut loop
+        //glutTimerFunc(100, check, 0);
+        //glutMainLoop();
+        //return 0;
+        //
+    
+
+
+
+        //Let start glut loop
+        glutTimerFunc(100, check, 0);
+        glutMainLoop();
+        //return 0;
+        //
+
+#endif
+
+}
+
+void simple2() {
 
 
 
@@ -511,11 +874,11 @@ int main(int argc, char *argv[])
 
 
 
-    while(!is_optimizedM){
+    while (!is_optimizedM) {
         for (int sample = 1; sample <= nTraining; ++sample) {
 
-            if(!is_optimizedM)iCycle++;
-            if(is_optimizedM)continue;
+            if (!is_optimizedM)iCycle++;
+            if (is_optimizedM)continue;
             iCycleTotal++;
             ////cout << "Sample " << sample << endl;
             //// Getting (image, label)
@@ -530,7 +893,7 @@ int main(int argc, char *argv[])
             float* binNumber = new float[n1];
             for (int i = 0; i < n1; i++)
             {
-                binNumber[i] =out1[i];
+                binNumber[i] = out1[i];
 
             }
 
@@ -538,13 +901,13 @@ int main(int argc, char *argv[])
 
             float* target = new float[10];
             target[labelN] = 1;
-            bb->train(binNumber, target,allow_optimisation_transform);
+            bb->train(binNumber, target, allow_optimisation_transform);
 
-            if (allow_optimisation_transform){
+            if (allow_optimisation_transform) {
 
-                for(int i=(bb->nlCount-2);i>=0;i--){
+                for (int i = (bb->nlCount - 2); i >= 0; i--) {
 
-                   // errTmp[i] = bb->sumFloatMD(errTmp[i],bb->list[i].getErrors(),bb->list[i].getOutCount());
+                    // errTmp[i] = bb->sumFloatMD(errTmp[i],bb->list[i].getErrors(),bb->list[i].getOutCount());
                     bb->optimize_layer(i);
                 }
             }
@@ -584,15 +947,15 @@ int main(int argc, char *argv[])
 
 
 
-    if(is_optimizedM)
+    if (is_optimizedM)
     {
-        cout<<endl<<"_______________show_errors_______________\n"<<endl;
-       for(int i=(bb->nlCount-2);i>=0;i--)
+        cout << endl << "_is_optimizedM______________show_errors_______________\n" << endl;
+        for (int i = (bb->nlCount - 2); i >= 0; i--)
         {
 
-            cout<<" layer :"+std::to_string(i)+" ";
-            bb->printArray(bb->list[i].getErrors(),i, bb->list[i].getOutCount());
-            std::cout<<"\n";
+            cout << " layer :" + std::to_string(i) + " ";
+            bb->printArray(bb->list[i].getErrors(), i, bb->list[i].getOutCount());
+            std::cout << "\n";
 
             if (allow_optimisation_transform) {
                 cout << " errTmp:" + std::to_string(i) + " ";
@@ -626,9 +989,9 @@ int main(int argc, char *argv[])
         bb->query(binNumber);
     }
 
-    std::cout<<"\n______________________________\n";
-    std::cout<<"iCycle:"<<iCycle<<endl;
-    std::cout<<"iCycleTotal:"<<iCycleTotal<<endl;
+    std::cout << "\n______________________________\n";
+    std::cout << "iCycle:" << iCycle << endl;
+    std::cout << "iCycleTotal:" << iCycleTotal << endl;
 
     // Save the final network
     write_matrix(model_fn);
@@ -647,6 +1010,217 @@ int main(int argc, char *argv[])
 
 
 
+}
+    
+void simple1() {
+
+
+
+    //    return 0;
+    //myNeuro bb;
+         //----------------------------------INPUTS----GENERATOR-------------
+    //   std::cout<<"\n_________________________________ start main\n";;;
+            //qsrand((QTime::currentTime().second()));
+    float* abc = new float[n1];
+    for (int i = 0; i < n1; i++)
+    {
+        abc[i] = (rand() % 98) * 0.01 + 0.01;
+    }
+
+    float* cba = new float[n1];
+    for (int i = 0; i < n1; i++)
+    {
+        cba[i] = (rand() % 98) * 0.01 + 0.01;
+    }
+
+    //---------------------------------TARGETS----GENERATOR-------------
+    std::cout << "\n________________TARGETS----GENERATOR_________________\n";;
+    float* tar1 = new float[10];
+    tar1[0] = 0.01;
+    tar1[1] = 0.99;
+    tar1[2] = 0;
+    tar1[3] = 0;
+    tar1[4] = 0;
+    tar1[5] = 0;
+    tar1[6] = 0;
+    tar1[7] = 0;
+    tar1[8] = 0;
+    tar1[9] = 0;
+
+    float* tar2 = new float[10];
+    tar2[0] = 0.99;
+    tar2[1] = 0.01;
+    tar2[2] = 0;
+    tar2[3] = 0;
+    tar2[4] = 0;
+    tar2[5] = 0;
+    tar2[6] = 0;
+    tar2[7] = 0;
+    tar2[8] = 0;
+    tar2[9] = 0;
+
+    std::cout << "\n________________target1_________________\n";;
+    for (int out = 0; out < 10; out++) {
+        std::cout << "outputNeuron " + std::to_string(out) + ":";
+        std::cout << (tar1[out]);
+        std::cout << std::to_string(tar1[out]) + "\n";
+    }
+    std::cout << "\n________________target2_________________\n";;
+    for (int out = 0; out < 10; out++) {
+        std::cout << "outputNeuron " + std::to_string(out) + ":";
+        std::cout << (tar2[out]);
+        std::cout << std::to_string(tar2[out]) + "\n";
+    }
+
+    //--------------------------------NN---------WORKING---------------
+
+    std::cout << "\n___________________calculate_without_train_____________\n";;
+    bb->query(abc);
+    bb->query(cba);
+
+    std::cout << "\n________________start_train_________________\n";;
+    iCycle = 0;
+    int nTrainingSimple = 100000;
+
+
+
+
+    //        float * e1;
+    //        for(int i=(bb->nlCount-2);i>=0;i--)
+    //            errTmp[i] = e1;
+
+
+
+    while (iCycle < nTrainingSimple and !is_optimizedM)
+        //train until specified accuracy level
+    {
+        if (!is_optimizedM) iCycleTotal++;
+        //Sleep(500);
+        float** errors1 = bb->train(abc, tar1, allow_optimisation_transform);
+
+        //            if(iCycle==0)
+        //            for(int i=(bb->nlCount-2);i>=0;i--)
+        //                errTmp[i] = bb->list[i].getErrors();
+
+        //            for(int i=(bb->nlCount-2);i>=0;i--)
+        //                errTmp[i] = bb->sumFloatMD(errTmp[i],bb->list[i].getErrors(),bb->list[i].getOutCount());
+
+
+        float** errors2 = bb->train(cba, tar2, allow_optimisation_transform);
+
+        //            for(int i=(bb->nlCount-2);i>=0;i--)
+        //                errTmp[i] = bb->sumFloatMD(errTmp[i],bb->list[i].getErrors(),bb->list[i].getOutCount());
+
+
+        //            for(int i=(bb->nlCount-2);i>=0;i--)
+        //                errTmp[i] = bb->list[i].getErrors();
+
+
+        //            for(int i=(bb->nlCount-2);i>=0;i--)
+        //                errTmp[i] = bb->sumFloatMD(errTmp[i],bb->list[i].getErrors(),bb->list[i].getOutCount());
+
+        iCycle++;
+
+        //            if(iCycle>1000)
+        if (allow_optimisation_transform) {
+            for (int i = (bb->nlCount - 2); i >= 0; i--)
+                bb->optimize_layer(i);
+        }
+
+
+        if (is_optimizedM)
+        {
+            cout << endl << "_is_optimizedM______________show_errors_______________\n" << endl;
+            //                for(int i=(bb->nlCount-1);i>=0;i--) //skip "out" layer (nlCount-1) we could not modified it (a am too stupid for that)
+            for (int i = (bb->nlCount - 2); i >= 0; i--)
+            {
+
+                cout << " layer :" + std::to_string(i) + " ";
+                bb->printArray(bb->list[i].getErrors(), i, bb->list[i].getOutCount());
+                std::cout << "\n";
+
+                cout << " errTmp:" + std::to_string(i) + " ";
+                bb->printArray(bb->list[i].errTmp, i, bb->list[i].getOutCount());
+                std::cout << "\n";
+                //  just trash
+                //                    bb->printArray(errors1[i],0,300);
+                //                    bb->printArray(errors2[i],0,300);
+                //                    for(int j=0;j<241;j++)
+                //                    {
+                //                        cout<<"\t"<<i<<":"<<j<<"\t"<<errors1[i][j];
+                //                        if(errors1[i][j]!=0)maxN=j;
+                //                    }
+                //                    std::cout << "\nmaxN="<<maxN;
+                //                    cout<<endl<<"\n______________________________\n"<<endl;
+
+
+            }
+        }
+
+
+
+    }
+
+
+    std::cout << "\n________________end_train_________________\n";;
+    std::cout << "\n___________________calculate_RESULT_____________\n";;
+    bb->query(abc);
+    std::cout << "______\n";;
+    bb->query(cba);
+
+
+    std::cout << "\n_______________THE____END_______________\n";;
+    //std::cout<<"\n_______________THE____END_______________\n";;
+
+     //return a.exec();
+
+
+
+    std::cout << "\n______________________________\n";
+    std::cout << "iCycle:" << iCycle << endl;
+    std::cout << "iCycleTotal:" << iCycleTotal << endl;
+
+
+
+    if (allow_optimisation_transform) {
+        bb->write_matrix_var1(model_fn_opt);
+    }
+    else {
+        bb->write_matrix_var1(model_fn);
+    }
+
+}
+
+
+int main(int argc, char *argv[])
+{
+
+
+    bb = new myNeuro();
+    
+
+
+
+    //QCoreApplication a(argc, argv);
+//   std::cout<<"\n_________________________________ start main 0\n";;;
+    time_t start, end;
+    double time_taken;
+    time(&start);
+
+    
+ 
+  
+    iCycleTotal = 0;
+    bool start_varian1 = true;
+
+    if (start_varian1) {
+        simple1();
+    }
+    else {
+        simple2();
+    }
+
+
 
 
 
@@ -657,5 +1231,32 @@ int main(int argc, char *argv[])
     std::cout << "Time taken by program is : " << time_taken << "";
     std::cout << " sec " << "\n";
 
+
+    if (start_visualisation) {
+        glutInit(&argc, argv);
+        visualise();
+    }
+
+
     return 0;
 }
+
+
+
+//Sleep(10000);
+////for openGl visulaise // empty window
+////
+//glutInit(&argc, argv);  // Initialize GLUT
+//glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);   // Set up some memory buffers for our display
+//glutInitWindowSize(900, 700);  // Set the window size
+//glutCreateWindow("Tactical_Hacker, GL");   // Create the window with the title "Tactical_Hacker,GL"
+//glutReshapeFunc(changeViewPort);  // Bind the two functions (above) to respond when necessary
+//glutDisplayFunc(render);
+//// Very important!  This initializes the entry points in the OpenGL driver so we can call all the functions in the API.
+//GLenum err = glewInit();
+//if (GLEW_OK != err) {
+//    fprintf(stderr, "GLEW error");
+//    return 1;
+//}
+//glutMainLoop();
+//return 0;

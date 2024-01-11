@@ -1,14 +1,22 @@
 #include "myNeuro.h"
 //#include <QDebug>
-//using namespace std;
+
 #include <typeinfo>
 #define STRING(Value) #Value
 
 bool is_optimizedM;
 
-//switcher
-//bool allow_optimisation_transform = false;
-bool allow_optimisation_transform = true;
+//switchers
+bool allow_optimisation_transform = false;
+//bool allow_optimisation_transform = true;
+//bool start_visualisation = false;
+bool start_visualisation = true;
+
+//bool allow_truncate_for_example = false;
+bool allow_truncate_for_example = true;
+
+double areaWidth = 1000.0;
+double areaHeight = 1000.0;
 
 int iCycle;
 int iCycleTotal;
@@ -27,13 +35,15 @@ myNeuro::myNeuro()
     errOptinizationLimit = errOptinizationLimitG;
     list = (nnLay*) malloc((nlCount)*sizeof(nnLay));
 
+
+
     inputs = (float*) malloc((inputNeurons)*sizeof(float));
     targets = (float*) malloc((outputNeurons)*sizeof(float));
 
-//    list[0].setIO(100,20);
-//    list[1].setIO(20,6);
-//    list[2].setIO(6,3);
-//    list[3].setIO(3,2);
+    //list[0].setIO(100,20);
+    //list[1].setIO(20,6);
+    //list[2].setIO(6,3);
+    //list[3].setIO(3,2);
 
     //list[0].setIO(n1, n2);
     //list[1].setIO(n2, 40);
@@ -48,23 +58,25 @@ myNeuro::myNeuro()
 //    list[1].setIO(n2, 30);
 //    list[2].setIO(30, n3);
 
+    //list[0].setIO(n1, 1);
+    //list[1].setIO(1, n3);
+
+   /* list[0].setIO(80, 20);
+    list[1].setIO(20, 10);*/
+
     list[0].setIO(n1, n2);
     list[1].setIO(n2, n3);
-
-
 
 //   std::cout<<"\n_________________________________ start myNeuro cpp myNeuro\n";;
 
 
-    //--------однослойный---------//
+    //--------singel (пример)---------//
 //    inputNeurons = 100;
 //    outputNeurons =2;
 //    nlCount = 2;
 //    list = (nnLay*) malloc((nlCount)*sizeof(nnLay));
-
 //    inputs = (float*) malloc((inputNeurons)*sizeof(float));
 //    targets = (float*) malloc((outputNeurons)*sizeof(float));
-
 //    list[0].setIO(100,10);
 //    list[1].setIO(10,2);
 
@@ -83,6 +95,7 @@ float **  myNeuro::feedForwarding(bool mode_train)
         return backPropagate();// обратн расп ошибки
     } else // is query mode
     {
+
 //        std::cout<<std::to_string(outputNeurons)+"!mode_train - Feed Forward: \n";;
 //        std::cout<<"nlCount:"+std::to_string(nlCount)+"\n";
 //        std::cout<<"total outputNeurons:"+std::to_string(outputNeurons)+"\n";
@@ -125,7 +138,7 @@ float* myNeuro::processErrors(int i, bool & startOptimisation, bool showError = 
 
 
     //startOptimisation = startOptimisation & (err1<errOptinizationLimit) ;
-    startOptimisation = startOptimisation & (totalE<errOptinizationLimit) ; // & (i == (nlCount-1)) // & true ; //
+    startOptimisation = startOptimisation && (totalE<errOptinizationLimit) ; // & (i == (nlCount-1)) // & true ; //
     if (list[i].is_optimizedL != startOptimisation) list[i].is_optimizedL = startOptimisation;
 
 
@@ -151,7 +164,7 @@ float* myNeuro::processErrors(int i, bool & startOptimisation, bool showError = 
 
         std::cout<<"\n";
         //if(list[i].is_optimizedL )std::cout<<"\n_________________________________\n";
-        std::cout<<" layer:"+std::to_string(i)+" ";
+        std::cout<<" -layer:"+std::to_string(i)+" ("+std::to_string(lenLayer)+") ";
         printArray(list[i].getErrors(),i, lenLayer);
         //if(list[i].is_optimizedL )std::cout<<"\n_________________________________\n";
         std::cout<<"\n";
@@ -172,7 +185,7 @@ float* myNeuro::processErrors(int i, bool & startOptimisation, bool showError = 
 }
 
 float ** myNeuro::backPropagate()
-{
+{   
     //   std::cout<<"\n_________________________________ start myNeuro cpp backPropagate\n";;
     //-------------------------------ERRORS-----CALC---------
     bool showError = false;
@@ -264,9 +277,11 @@ void myNeuro::sumFloatMD(int inS)
 void myNeuro::optimize_layer(int inS){
     int countOut = list[inS].getOutCount();
 //    int countIn = list[i].getInCount();
-if(rand()%10==9 )
+if(rand()%100==9 )
     for(int inp =0; inp < countOut; inp++)
     {
+      //if (rand() % 1000 == 9)
+      //  std::cout << "truncMatrix layer:" << inS << " neuron:" << inp << " neuron val:" << list[inS].errTmp[inp] << "  countOut:" << countOut << "\n";;
         if(absF(list[inS].errTmp[inp])>1){
             std::cout<<"truncMatrix layer:"<< inS <<" neuron:"<< inp  <<" neuron val:"<< list[inS].errTmp[inp]  <<"  countOut:"<< countOut <<"\n";;
             list[inS].truncMatrixOut(inp);
@@ -302,7 +317,7 @@ void myNeuro::printArray(float *arr, int iList, int s)
         type_s = typeid(arr[inp]).name();
         //std::cout<< type_s;
         str_f = 'f';
-        if(type_s == str_f | type_s == "float") {
+        if(type_s == str_f || type_s == "float") {
 
             //v0
             int i2 = 0;
