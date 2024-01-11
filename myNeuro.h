@@ -6,7 +6,10 @@ extern bool is_optimizedM;
 //switcher
 extern bool allow_optimisation_transform;
 //bool allow_optimisation_transform = false;
-
+extern double areaWidth;
+extern double areaHeight;
+extern bool start_visualisation;
+extern bool allow_truncate_for_example;
 extern int iCycle;
 extern int iCycleTotal;
 
@@ -22,6 +25,10 @@ static float absF(float N) {
 }
 #endif
 
+struct Point {
+    double x;
+    double y;
+};
 
 #ifndef MYNEURO_H
 #define MYNEURO_H
@@ -38,7 +45,6 @@ static float absF(float N) {
 #include <string>
 #include <cstdio>
 #include <cstdlib>
-//#include <cmath>
 #include <vector>
 #include <set>
 #include <iterator>
@@ -46,13 +52,20 @@ static float absF(float N) {
 
 
 using namespace std;
-// Training image file name
-//const string training_image_fn = "C:\\mnist\\train-images.idx3-ubyte";//win
-const string training_image_fn = "mnist/train-images.idx3-ubyte";//lin
+
+#include <iostream>
+#include <vector>
+
+
+//#include <cmath>// does not need
+
+// Training image File name
+const string training_image_fn = "C:\\mnist\\train-images.idx3-ubyte";//win
+//const string training_image_fn = "mnist/train-images.idx3-ubyte";//lin
 
 // Training label file name
-//const string training_label_fn = "C:\\mnist\\train-labels.idx1-ubyte";//win
-const string training_label_fn = "mnist/train-labels.idx1-ubyte";//lin
+const string training_label_fn = "C:\\mnist\\train-labels.idx1-ubyte";//win
+//const string training_label_fn = "mnist/train-labels.idx1-ubyte";//lin
 
 // Weights file name
 const string model_fn = "model-neural-network.dat";
@@ -71,7 +84,7 @@ const int n1 = width * height; // = 784, without bias neuron
 const int n2 = 128;
 const int n3 = 10; // Ten classes: 0 - 9
 
-const float errLimitG = 0.000005;
+const float errLimitG = 0.0005;
 
 const float errOptinizationLimitG = 0.0001; //0.00003; //0.000001; //0.00003;
 
@@ -109,11 +122,15 @@ public:
 
            bool is_optimizedL;
            float * errTmp;
+           struct Point *  pointsIn_ ;
+           struct Point *  pointsOut_ ;
            float ** matrix;
            float * hidden;
            float * errors;
 //           int setInCount(int inputs){in=inputs};
 //           int setOutCount(int outputs){out=outputs};
+            Point * getInPoints(){return pointsIn_;}
+            Point * getOutPoints(){return pointsOut_;}
            int getInCount(){return in;}
            int getOutCount(){return out;}
            float **getMatrix(){return matrix;}
@@ -159,14 +176,38 @@ public:
                    matrix[in][ou] += (learnRate * errors[ou]);
                }
            };
-           void setIO(int inputs, int outputs)
+            std::vector<Point> distributePointsEvenly(int numPoints) {
+                std::vector<Point> points;
+                int numRows = sqrt(numPoints);
+                int numCols = ceil(static_cast<double>(numPoints) / numRows);
+                double deltaX = areaWidth / (numCols + 1);
+                double deltaY = areaHeight / (numRows + 1);
+                double startX = deltaX;
+                double startY = deltaY;
+
+                for (int row = 0; row < numRows; ++row) {
+                    for (int col = 0; col < numCols; ++col) {
+                        if (points.size() < numPoints) {
+                            Point point;
+                            point.x =( startX + col * deltaX )/ areaWidth;
+                            point.y =( startY + row * deltaY )/ areaHeight;
+                            points.push_back(point);
+                        }
+                    }
+                }
+
+                return points;
+            };
+               void setIO(int inputs, int outputs)
            {
                in=inputs;
                out=outputs;
 
-               std::cout << " in-out " + std::to_string(in) + " - " + std::to_string(out) + " \n ";
+               std::cout << " in- " << fixed << std::to_string(in);
+               std::cout << " out- " << fixed << std::to_string(out) + " \n ";
                std::cout << " randWeight " + std::to_string(randWeight) + " \n ";
 
+               //    point = (Point*) malloc((nlCount)*sizeof(Point));
 
                hidden = (float*) malloc((out)*sizeof(float));
 
@@ -219,6 +260,39 @@ public:
                errTmp = (float *) malloc((out) * sizeof(float));
                for (int i = 0; i < out; i++)
                { errTmp[i] = 0; };
+
+               std::vector<Point> pointsIn = {};
+               std::vector<Point> pointsOut = {};
+
+               pointsIn = distributePointsEvenly(inputs);
+               std::cout << "in:" << std::endl;
+               pointsIn_ = (Point*)malloc((inputs) * sizeof(Point));
+
+               int iPoints = 0;
+               for (const auto& point : pointsIn) {
+                   //std::cout << "in X: " << point.x << ", Y: " << point.y << std::endl;
+                   Point point_;
+                   point_.x = point.x;
+                   point_.y = point.y;
+                   pointsIn_[iPoints] = (point_);
+                   iPoints++;
+               }
+
+               pointsOut = distributePointsEvenly(outputs);
+               std::cout << "out:" << std::endl;
+               pointsOut_ = (Point*)malloc((outputs) * sizeof(Point));
+
+               iPoints = 0;
+               for (const auto& point : pointsOut) {
+                   //std::cout << "out X: " << point.x << ", Y: " << point.y << std::endl;
+                   Point point_;
+                   point_.x = point.x;
+                   point_.y = point.y;
+                   pointsOut_[iPoints] = (point_);
+                   iPoints++;
+               }
+            
+
            }
            void toHiddenLayer(float *inputs)
            {
